@@ -333,26 +333,7 @@ function inject(context) {
          * @param {Object} original
          */
         clone: function clone(original) {
-            if (original === null) {
-                return null;
-            }
-            var clonedObject = {};
-            for (var index in original) {
-                if (original.hasOwnProperty(index) && original[index] !== undefined) {
-                    // if original does not have hasOwnProperty or is an Array then simply copy the whole object
-                    if ( (typeof original[index] === 'object') &&
-                         !(original[index] instanceof Array) &&
-                         (original[index] !== null) &&
-                         (original[index].hasOwnProperty) &&
-                         (!Ti.Android || original[index].toString() == '[object Object]')
-                        ) {
-                        clonedObject[index] = clone(original[index]);
-                    } else {
-                        clonedObject[index] = original[index];
-                    }
-                }
-            }
-            return clonedObject;
+            return JSON.parse(JSON.stringify(original));
         },
 
         /**
