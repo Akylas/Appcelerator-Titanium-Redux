@@ -511,9 +511,9 @@ function inject(context) {
              * the future using redux's constructors.
              * @param {Object} args
              */
-            // context[constructorName].setDefault = function(args) {
-            //     redux.fn.setDefault(constructorName, args);
-            // };
+            context[constructorName].setDefault = function(args) {
+                redux.fn.setDefault(constructorName, args);
+            };
         },
         /**
          * Adds a natural constructors for all the different things you can create with Ti, like Labels,
@@ -540,9 +540,9 @@ function inject(context) {
              * the future using redux's constructors.
              * @param {Object} args
              */
-            // context[constructorName].setDefault = function(args) {
-            //     redux.fn.setDefault(constructorName, args);
-            // };
+            context[constructorName].setDefault = function(args) {
+                redux.fn.setDefault(constructorName, args);
+            };
         }
     };
 
