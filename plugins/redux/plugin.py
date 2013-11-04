@@ -28,6 +28,7 @@ def compileRJSS(path):
 	compileRJSS.result = ''
 	compileRJSS.braceDepth = 0
 	compileRJSS.inComment = False
+	compileRJSS.inVariable = False
 	compileRJSS.inSelector = False
 	compileRJSS.inAttributeBrace = False
 	compileRJSS.canStartSelector = True
@@ -38,6 +39,20 @@ def compileRJSS(path):
 			if (rjss[i] == '/' and rjss[i - 1] == '*'):
 				compileRJSS.inComment = False
 			continue
+		
+		def dollar():
+			if (compileRJSS.braceDepth > 0):
+				compileRJSS.result += '$'
+			else:
+				compileRJSS.canStartSelector = False
+				compileRJSS.inVariable = True
+				compileRJSS.result += 'var $'
+		
+		def semiColon():
+			if (compileRJSS.inVariable):
+				compileRJSS.canStartSelector = True
+				compileRJSS.inVariable = False
+			compileRJSS.result += ';'
 		
 		def space():
 			compileRJSS.result += ' '
@@ -54,7 +69,10 @@ def compileRJSS(path):
 				compileRJSS.result += 'if ('
 		
 		def equals():
-			compileRJSS.result += '==' if (rjss[i - 1] != '!' and rjss[i - 1] != '<' and rjss[i - 1] != '>') else '='
+			if (compileRJSS.inVariable):
+				compileRJSS.result += ';'
+			else:
+				compileRJSS.result += '==' if (rjss[i - 1] != '!' and rjss[i - 1] != '<' and rjss[i - 1] != '>') else '='
 		
 		def rightBracket():
 			if (compileRJSS.braceDepth > 0):
@@ -94,6 +112,8 @@ def compileRJSS(path):
 			compileRJSS.result += rjss[i]
 		
 		switch = {
+			'$': dollar,
+			';': semiColon,
 			' ': space,
 			'/': slash,
 			'[': leftBracket,
@@ -108,5 +128,5 @@ def compileRJSS(path):
 		else:
 			default()
 	
-	print "[INFO] Redux :: Successfully Compiled RJSS ::  %s.compiled.js" % path
-	open("%s.compiled.js" % path, 'w').write(compileRJSS.result)
+	print "[INFO] Redux :: Successfully Compiled RJSS ::  %s.compiled" % path
+	open("%s.compiled" % path, 'w').write(compileRJSS.result)

@@ -4,13 +4,16 @@
 var should = require('should'),
     mockti = require('mockti');
 
-describe('rjss', function () {
+describe('redux', function () {
+    var redux;
+    
     before(function () {
         this.Titanium = this.Ti = mockti();
     });
 
     it('should require', function () {
-        require('../redux').inject(this);
+        redux = require('../redux');
+        redux.inject(this);
     });
 
     it('should inject shorthands', function () {
@@ -55,7 +58,7 @@ describe('rjss', function () {
                 }
             };
         should.not.exist(this.PaintView);
-        this.R.fn.addNaturalConstructor(this, Paint, 'View', 'PaintView');
+        redux.fn.addNaturalConstructor(this, Paint, 'View', 'PaintView');
         should.exist(this.PaintView);
 
         var paintView = new this.PaintView(params);
@@ -74,15 +77,40 @@ describe('rjss', function () {
 
         clicked.should.equal(2);
     });
+    
+    it('should support adding multiple children', function() {
+        var window = new this.Window(),
+            label1 = new this.Label(),
+            label2 = new this.Label();
+        this.R(window).add(label1, label2);
+        window.should.have.property('children').with.lengthOf(2);
+        window.children[0].should.equal(label1);
+        window.children[1].should.equal(label2);
+    });
 
-    it('should support styling', function () {
+    it('rjss should support styling', function () {
         var params = {
             backgroundColor: '#fff'
         };
-        this.R.fn.parseRJSS('Window ' + JSON.stringify(params));
+        eval(redux.fn.parseRJSS('Window ' + JSON.stringify(params)));
         Ti.UI.addEventListener('function::createWindow', curryAssertFirstParameter(params));
-        var window = new this.Window(params);
+        var window = new this.Window();
         window.should.have.property('backgroundColor', params.backgroundColor);
+    });
+
+    it('rjss should support variables', function () {
+        var params = { backgroundColor: '#fff' },
+            parsed = redux.fn.parseRJSS('$mainColor = "#fff";\nWindow { backgroundColor: $mainColor }');
+        eval(parsed);
+        Ti.UI.addEventListener('function::createWindow', curryAssertFirstParameter(params));
+        var window = new this.Window();
+        window.should.have.property('backgroundColor', params.backgroundColor);
+    });
+
+    it('should be able to clone with a null property', function () {
+        var expected = { nullValue: null },
+            actual = redux.fn.clone(expected);
+        actual.should.eql(expected);
     });
 
     /*
