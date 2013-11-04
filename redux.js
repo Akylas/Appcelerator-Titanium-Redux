@@ -21,6 +21,7 @@ function inject(context) {
     /**
      * Create shorthand for commonly used functions.
      */
+    context.debug = context.debug || function(message) { Ti.API.debug(message); };
     context.info = context.info || function(message) { Ti.API.info(message); };
     context.error = context.error || function(message) { Ti.API.error(message); };
     context.warn = context.warn || function(message) { Ti.API.warn(message); };
