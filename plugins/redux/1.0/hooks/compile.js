@@ -87,9 +87,8 @@ function compileRJSS(path, logger) {
 		function equals() {
 			if (inIfStatement && rjss[i - 1] !== '!' && rjss[i - 1] !== '<' && rjss[i - 1] !== '>')
 				result += '==';
-			else if (inVariable) {
+			else 
 				result += currentChar;
-			}
 		}
 
 		function rightBracket() {
