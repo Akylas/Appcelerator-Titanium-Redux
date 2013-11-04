@@ -79,16 +79,6 @@ function inject(context) {
         idCounter: 0
     };
 
-    function orientation(o) {
-        if (o === undefined)
-            return 'none';
-        if (o === Ti.UI.LANDSCAPE_RIGHT)
-            return Ti.UI.LANDSCAPE_LEFT;
-        if (o === Ti.UI.UPSIDE_PORTRAIT)
-            return Ti.UI.PORTRAIT;
-        return o;
-    };
-
     function isObject(obj) {
         // Check for null
         return !!obj && obj != null && (typeof obj === 'object' && (!Ti.Android || obj.toString() == '[object Object]'));
@@ -146,6 +136,16 @@ function inject(context) {
             }
             throw 'Non-object selectors have been turned off in this version of redux for memory reasons.';
         },
+
+        parseOrientationString:function(o) {
+	        if (o === undefined)
+	            return 'none';
+	        if (o === Ti.UI.LANDSCAPE_RIGHT)
+	            return Ti.UI.LANDSCAPE_LEFT;
+	        if (o === Ti.UI.UPSIDE_PORTRAIT)
+	            return Ti.UI.PORTRAIT;
+	        return o;
+	    },
 
         /**
          * Turns a string of RJSS into JavaScript that can be safely evaluated. RJSS is a way to customize JavaScript
@@ -393,7 +393,7 @@ function inject(context) {
          * @param {Object} orientation
          */
         setDefault: function(selector, defaults, orientation) {
-            orientation = redux.orientation(orientation);
+            orientation = redux.fn.parseOrientationString(orientation);
             var selectors = selector.split(',');
             for (var i = 0, l = selectors.length; i < l; i++) {
                 // remove spaces
@@ -430,7 +430,7 @@ function inject(context) {
          */
         style: function(type, args, orientation) {
             args = args || {};
-            orientation = redux.orientation(orientation);
+            orientation = redux.fn.parseOrientationString(orientation);
             // merge defaults by id
             if (args.rid && args.rid !== '') {
                 var rids = args.rid.split(' ');
