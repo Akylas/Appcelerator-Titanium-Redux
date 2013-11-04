@@ -578,6 +578,52 @@ function inject(context) {
     };
 
     /**
+     * Expose the applyOrientation function to selector based redux usages --
+     * $(view).applyOrientation() etc.
+     * @param type
+     * @param args
+     * @param override
+     */
+    redux.fn.init.prototype.applyOrientation = function(orientation, args, override) {
+        for (var i = 0, l = this.length; i < l; i++) {
+            redux.fn.applyOrientation(this.context[i], orientation, args, override);
+        }
+        return this;
+    };
+
+    /**
+     * Expose the applyClass function to selector based redux usages --
+     * $(view).applyOrientation() etc.
+     * @param type
+     * @param args
+     * @param override
+     */
+    redux.fn.init.prototype.applyClass = function(rclass, args, orientation, override) {
+        args = args || {};
+        args.rclass = rclass;
+        for (var i = 0, l = this.length; i < l; i++) {
+            redux.fn.applyStyle(this.context[i], undefined, args, orientation, override);
+        }
+        return this;
+    };
+
+    /**
+     * Expose the applyId function to selector based redux usages --
+     * $(view).applyOrientation() etc.
+     * @param type
+     * @param args
+     * @param override
+     */
+    redux.fn.init.prototype.applyId = function(id, args, orientation, override) {
+        args = args || {};
+        args.id = id;
+        for (var i = 0, l = this.length; i < l; i++) {
+            redux.fn.applyStyle(this.context[i], undefined, args, orientation, override);
+        }
+        return this;
+    };
+
+    /**
      * Adds multiple children to the selector. -- $(view).add(child1, child2, child3, etc)
      * @param args
      */
