@@ -38,7 +38,7 @@ function inject(context) {
         events: [
             'beforeload', 'blur', 'change', 'click', 'close', 'complete', 'dblclick', 'delete', 'doubletap',
             'error', 'focus', 'load', 'move', 'open', 'return', 'scroll', 'scrollEnd', 'selected', 'singletap',
-            'swipe', 'touchcancel', 'touchend', 'touchmove', 'touchstart', 'twofingertap'
+            'swipe', 'touchcancel', 'touchend', 'touchmove', 'touchstart', 'twofingertap', 'itemclick'
         ],
         types: {
             Contacts: [
