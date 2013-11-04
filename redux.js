@@ -178,7 +178,7 @@ function inject(context) {
                         if (braceDepth == 0 && canStartSelector) {
                             canStartSelector = false;
                             inVariable = true;
-                            result += 'var $';
+                            result += 'this.$';
                         } else {
                             result += '$';
                         }
@@ -292,7 +292,7 @@ function inject(context) {
             for (var i = 0, l = arguments.length; i < l; i++) {
                 var parsedRJSS = redux.fn.parseRJSS(arguments[i]);
                 try {
-                    (new Function(parsedRJSS))()
+                    (new Function(parsedRJSS)).call(context);
                 } catch(e) {
                     context.error('RJSS "' + arguments[i] + '" has syntax errors:');
 
@@ -300,7 +300,7 @@ function inject(context) {
                     var lines = parsedRJSS.split("\n");
                     for (var i2 = 0, l2 = lines.length; i2 < l2; i2++) {
                         try {
-                            (new Function(lines[i2]))()
+                            (new Function(lines[i2])).call(context);
                         } catch (e) {
                             context.error("line " + i2 + ": " + e);
                         }
