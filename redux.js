@@ -167,20 +167,21 @@ function inject(context) {
             var canStartSelector = true, canBeAttributeBrace;
 
             for (var i = 0, l = rjss.length; i < l; i++) {
+            	var currentChar = rjss[i];
                 if (inComment) {
-                    if (rjss[i] == '/' && rjss[i - 1] == '*') {
+                    if (currentChar == '/' && rjss[i - 1] == '*') {
                         inComment = false;
                     }
                     continue;
                 }
-                switch (rjss[i]) {
+                switch (currentChar) {
                     case '$':
                         if (braceDepth == 0 && canStartSelector) {
                             canStartSelector = false;
                             inVariable = true;
                             result += 'this.$';
                         } else {
-                            result += '$';
+                            result += currentChar;
                         }
                         break;
                     case ';':
@@ -188,10 +189,10 @@ function inject(context) {
                             canStartSelector = true;
                             inVariable = false;
                         }
-                        result += ';';
+                        result += currentChar;
                         break;
                     case ' ':
-                        result += ' ';
+                        result += currentChar;
                         break;
                     case '/':
                         inComment = rjss[i + 1] == '*';
@@ -199,7 +200,7 @@ function inject(context) {
                         break;
                     case '[':
                         if (braceDepth > 0) {
-                            result += '[';
+                            result += currentChar;
                         } else {
                             canStartSelector = false;
                             inIfStatement = true;
@@ -210,10 +211,10 @@ function inject(context) {
                         if (inIfStatement === true)
                             result += (rjss[i - 1] != '!' && rjss[i - 1] != '<' && rjss[i - 1] != '>') ? '==' : '=';
                         else if (inVariable) {
-                            result += '=';
+                            result += currentChar;
                         }
                         else {
-                            result += rjss[i];
+                            result += currentChar;
                         }
                         break;
                     case ']':
@@ -237,11 +238,11 @@ function inject(context) {
                             }
                             braceDepth += 1;
                         }
-                        result += '{';
+                        result += currentChar;
                         break;
                     case '}':
                         braceDepth -= 1;
-                        result += '}';
+                        result += currentChar;
                         switch (braceDepth) {
                             case 0:
                                 if (rjss[i + 1] !== '(') {
@@ -264,7 +265,7 @@ function inject(context) {
                             inOrientation = false;
                             canStartSelector = true;
                         } else {
-                            result += rjss[i];
+                            result += currentChar;
                         }
                         break;
                     case '(':
@@ -277,7 +278,7 @@ function inject(context) {
                             inSelector = true;
                             result += '\nredux.fn.setDefault("';
                         }
-                        result += rjss[i];
+                        result += currentChar;
                         break;
                 }
             }
