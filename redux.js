@@ -73,11 +73,57 @@ function inject(context) {
         },
         defaults: {
             byID: {},
-            byClassName: {},
+            byRclass: {},
             byType: {}
-        }
+        },
+        idCounter: 0
     };
 
+    function orientation(o) {
+        if (o === undefined)
+            return 'none';
+        if (o === Ti.UI.LANDSCAPE_RIGHT)
+            return Ti.UI.LANDSCAPE_LEFT;
+        if (o === Ti.UI.UPSIDE_PORTRAIT)
+            return Ti.UI.PORTRAIT;
+        return o;
+    };
+
+    function isObject(obj) {
+        // Check for null
+        return !!obj && obj != null && (typeof obj === 'object' && (!Ti.Android || obj.toString() == '[object Object]'));
+    };
+
+    function isArray(obj) {
+        // Check for null
+        return !!obj && (obj instanceof Array);
+    };
+
+    function hasOwnProperty(obj, prop) {
+        return !!obj && ((obj.hasOwnProperty && obj.hasOwnProperty(prop)) || (!obj.hasOwnProperty && obj[prop]));
+    };
+
+    function mergeObjects(target, source, newObjOverridesDefault) {
+        var key, val, goDeep;
+        if (target && source.hasOwnProperty) {
+            for (key in source) {
+                if (!hasOwnProperty(source, key))
+                    continue;
+                val = source[key];
+                // Deep merging.
+                if (isArray(val)) {
+                    target[key] = val.slice(0);
+                } else if (isObject(val)) {
+                    if (!target[key])
+                        target[key] = {};
+                    mergeObjects(target[key], val, newObjOverridesDefault);
+                } else if ((typeof target[key] === 'undefined') || (newObjOverridesDefault)) {
+                    target[key] = val;
+                }
+            }
+        }
+        return target;
+    };
     /**
      * The core redux functions.
      */
@@ -111,7 +157,7 @@ function inject(context) {
         parseRJSS: function(rjss) {
             rjss = rjss.replace(/[\r\t\n]/g, ' ');
             var result = '', braceDepth = 0;
-            var inComment = false, inSelector = false, inAttributeBrace = false, inVariable = false;
+            var inComment = false, inSelector = false, inAttributeBrace = false, inVariable = false, inIfStatement = false, inOrientation = false;
             var canStartSelector = true, canBeAttributeBrace;
 
             for (var i = 0, l = rjss.length; i < l; i++) {
@@ -150,15 +196,18 @@ function inject(context) {
                             result += '[';
                         } else {
                             canStartSelector = false;
+                            inIfStatement = true;
                             result += 'if (';
                         }
                         break;
                     case '=':
-                        if (!inVariable) {
+                        if (inIfStatement === true)
                             result += (rjss[i - 1] != '!' && rjss[i - 1] != '<' && rjss[i - 1] != '>') ? '==' : '=';
+                        else if (inVariable) {
+                            result += '=';
                         }
                         else {
-                            result += '=';
+                            result += rjss[i];
                         }
                         break;
                     case ']':
@@ -167,6 +216,7 @@ function inject(context) {
                         } else {
                             canStartSelector = true;
                             result += ')';
+                            inIfStatement = false;
                             canBeAttributeBrace = true;
                         }
                         break;
@@ -188,8 +238,13 @@ function inject(context) {
                         result += '}';
                         switch (braceDepth) {
                             case 0:
-                                result += ');';
-                                canStartSelector = true;
+                                if (rjss[i + 1] !== '(') {
+                                    result += ');';
+                                    canStartSelector = true;
+                                } else {
+                                    inOrientation = true;
+                                    result += ',';
+                                }
                                 break;
                             case -1:
                                 inAttributeBrace = false;
@@ -197,6 +252,18 @@ function inject(context) {
                                 break;
                         }
                         break;
+                    case ')':
+                        if (inOrientation === true) {
+                            result += ');';
+                            inOrientation = false;
+                            canStartSelector = true;
+                        } else {
+                            result += rjss[i];
+                        }
+                        break;
+                    case '(':
+                        if (inOrientation === true)
+                            break;
                     default:
                         canBeAttributeBrace = false;
                         if (braceDepth == 0 && canStartSelector) {
@@ -340,26 +407,37 @@ function inject(context) {
          * Set the default properties for any elements matched by the RJSS selector.
          * @param {Object} selector
          * @param {Object} defaults
+         * @param {Object} orientation
          */
-        setDefault: function (selector, defaults) {
+        setDefault: function(selector, defaults, orientation) {
+            orientation = redux.orientation(orientation);
             var selectors = selector.split(',');
             for (var i = 0, l = selectors.length; i < l; i++) {
-                var cleanSelector = selectors[i].split(' ').join(''); // remove spaces
+                // remove spaces
+                var cleanSelector = selectors[i].split(' ').join('');
                 var target;
                 switch (cleanSelector.charAt(0)) {
-                    case '#': // set by ID
+                    case '#':
+                        // set by ID
                         target = redux.data.defaults.byID;
-                        cleanSelector = cleanSelector.substring(1); // remove the '#'
+                        cleanSelector = cleanSelector.substring(1);
+                        // remove the '#'
                         break;
-                    case '.': // set by className
-                        target = redux.data.defaults.byClassName;
-                        cleanSelector = cleanSelector.substring(1); // remove the '.'
+                    case '.':
+                        // set by rclass
+                        target = redux.data.defaults.byRclass;
+                        cleanSelector = cleanSelector.substring(1);
+                        // remove the '.'
                         break;
-                    default: // set by element type
+                    default:
+                        // set by element type
                         target = redux.data.defaults.byType;
                         break;
                 }
-                target[cleanSelector] = this.mergeObjects(target[cleanSelector] || {}, defaults, true);
+                if (!target[cleanSelector])
+                    target[cleanSelector] = {};
+                var selector = target[cleanSelector];
+                selector[orientation] = mergeObjects(selector[orientation] || {}, defaults, true);
             }
             return this;
         },
@@ -367,32 +445,60 @@ function inject(context) {
          * Takes in an object and applies any default styles necessary to it.
          * @param args
          */
-        style: function(type, args) {
+        style: function(type, args, orientation) {
+            args = args || {};
+            orientation = redux.orientation(orientation);
             // merge defaults by id
-            if (args && args.id && redux.data.defaults.byID[args.id]) {
-                args = redux.fn.mergeObjects(args, redux.data.defaults.byID[args.id]);
+            if (args.rid && args.rid !== '') {
+                var rids = args.rid.split(' ');
+                for (var i = rids.length - 1; i >= 0; i--) {
+                    var rid = rids[i];
+                    if (redux.data.defaults.byID[rid])
+                        args = mergeObjects(args, redux.data.defaults.byID[rid][orientation]);
+                };
             }
             // merge defaults by class name
-            if (args && args.className) {
-                var classes = args.className.split(' ');
-                for (var i = 0, l = classes.length; i < l; i++) {
-                    args = redux.fn.mergeObjects(args, redux.data.defaults.byClassName[classes[i]]);
-                }
+            if (args.rclass && args.rclass !== '') {
+                var classes = args.rclass.split(' ');
+                for (var i = classes.length - 1; i >= 0; i--) {
+                    var rclass = classes[i];
+                    if (redux.data.defaults.byRclass[rclass])
+                        args = mergeObjects(args, redux.data.defaults.byRclass[rclass][orientation]);
+                };
             }
             // merge defaults by type
-            return redux.fn.mergeObjects(args, redux.data.defaults.byType[type]);
+            if (type && type !== '' && redux.data.defaults.byType[type])
+                return mergeObjects(args, redux.data.defaults.byType[type][orientation]);
+            else
+                return args;
         },
         /**
          * Applies the styles from the passed in arguments directly to the passed in object.
          * @param obj Any object or UI element; does not have to be created by redux.
          * @param type The type of the object (Label, ImageView, etc)
-         * @param args The construction arguments, such as the id or className
+         * @param args The construction arguments, such as the rid or rclass
+         * @param orientation the orientation
+         * @param override should override if exists
          */
-        applyStyle: function(obj, type, args) {
-            var styles = redux.fn.style(type, args);
-            for (var index in styles) {
-                obj[index] = styles[index];
-            }
+        applyStyle: function(obj, type, args, orientation, override) {
+            override = override !== false;
+            var styles = redux.fn.style(type, args, orientation);
+            mergeObjects(obj, styles, override);
+        },
+        /**
+         * Applies the styles from the passed in arguments directly to the passed in
+         * object.
+         * @param obj Any object or UI element; does not have to be created by redux.
+         * @param type The type of the object (Label, ImageView, etc)
+         * @param args The construction arguments, such as the id or rclass
+         */
+        applyOrientation: function(obj, orientation, args, override) {
+            args = args || {};
+            var type = obj.constructorName || '';
+            args.rclass = args.rclass || (obj.rclass || undefined)
+            args.id = args.id || (obj.id || undefined)
+            var styles = redux.fn.style(type, args, orientatio, overriden);
+            mergeObjects(obj, styles, override);
         },
         /**
          * Adds a natural constructors for all the different things you can create with Ti, like Labels,
@@ -405,18 +511,25 @@ function inject(context) {
          */
         addNaturalConstructor: function (context, parent, type, constructorName) {
             constructorName = constructorName || type;
-            context[constructorName] = function (args) {
-                args = redux.fn.style(constructorName, args);
+            context[constructorName] = function() {
+                var _args = Array.prototype.slice.call(arguments);
+                if (_args.length === 0)
+                    _args = [{}];
+                _args[0] = redux.fn.style(constructorName, _args[0]);
                 // return created object with merged defaults by type
-                return parent['create' + type](args);
+                var obj = parent['create' + type].apply(context, _args);
+                // obj.constructorName = constructorName;
+                // obj._id_ = redux.data.idCounter++;
+                return obj;
             };
             /**
-             * Shortcut to setting defaults by type. Will only apply to objects you create in the future using redux's constructors.
+             * Shortcut to setting defaults by type. Will only apply to objects you create in
+             * the future using redux's constructors.
              * @param {Object} args
              */
-            context[type].setDefault = function (args) {
-                redux.fn.setDefault(type, args);
-            };
+            // context[constructorName].setDefault = function(args) {
+            //     redux.fn.setDefault(constructorName, args);
+            // };
         },
         /**
          * Adds a natural constructors for all the different things you can create with Ti, like Labels,
@@ -429,18 +542,23 @@ function inject(context) {
          */
         addTitaniumNaturalConstructor: function (context, namespace, type, constructorName) {
             constructorName = constructorName || type;
-            context[constructorName] = function (args) {
+            context[constructorName] = function(args) {
                 args = redux.fn.style(constructorName, args);
+                args.constructorName = constructorName;
                 // return created object with merged defaults by type
-                return Ti[namespace]['create' + type](args);
+                var obj = Ti[namespace]['create' + type](args);
+                // obj.constructorName = constructorName;
+                // obj._id_ = redux.data.idCounter++;
+                return obj;
             };
             /**
-             * Shortcut to setting defaults by type. Will only apply to objects you create in the future using redux's constructors.
+             * Shortcut to setting defaults by type. Will only apply to objects you create in
+             * the future using redux's constructors.
              * @param {Object} args
              */
-            context[type].setDefault = function (args) {
-                redux.fn.setDefault(type, args);
-            };
+            // context[constructorName].setDefault = function(args) {
+            //     redux.fn.setDefault(constructorName, args);
+            // };
         }
     };
 
