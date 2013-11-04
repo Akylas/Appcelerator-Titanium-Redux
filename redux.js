@@ -650,4 +650,5 @@ function inject(context) {
      * Create a shorthand for redux itself -- $ or R, if they are available.
      */
     context['R'] = context['R'] || redux;
+    return redux;
 }
