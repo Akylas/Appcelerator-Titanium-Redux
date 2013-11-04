@@ -154,8 +154,14 @@ function inject(context) {
          * @param {String} rjss The raw RJSS contents to parse into executable JavaScript
          * @returns {String} Executable JavaScript
          */
-        parseRJSS: function(rjss) {
-            rjss = rjss.replace(/[\r\t\n]/g, ' ');
+        parseRJSS: function(file) {
+
+            var compiled = Ti.Filesystem.getFile(file + '.compiled.js');
+            if (compiled.exists()) {
+                return compiled.read() + '';
+            }
+
+            var rjss = (Ti.Filesystem.getFile(file).read() + '').replace(/[\r\t\n]/g, ' ');
             var result = '', braceDepth = 0;
             var inComment = false, inSelector = false, inAttributeBrace = false, inVariable = false, inIfStatement = false, inOrientation = false;
             var canStartSelector = true, canBeAttributeBrace;
@@ -284,23 +290,19 @@ function inject(context) {
          */
         includeRJSS: function () {
             for (var i = 0, l = arguments.length; i < l; i++) {
-                // Check if the plugin has done our work.
-                var compiled = Ti.Filesystem.getFile(arguments[i] + '.compiled'),
-                    parsedRJSS = compiled.exists()
-                        ? compiled.read() + ''
-                        : redux.fn.parseRJSS(Ti.Filesystem.getFile(arguments[i]).read() + '');
+                var parsedRJSS = redux.fn.parseRJSS(arguments[i]);
                 try {
-                    eval(parsedRJSS);
+                    (new Function(parsedRJSS))()
                 } catch(e) {
-                    error('RJSS "' + arguments[i] + '" has syntax errors:');
+                    context.error('RJSS "' + arguments[i] + '" has syntax errors:');
 
                     // Check each line for errors
                     var lines = parsedRJSS.split("\n");
                     for (var i2 = 0, l2 = lines.length; i2 < l2; i2++) {
                         try {
-                            eval(lines[i2]);
+                            (new Function(lines[i2]))()
                         } catch (e) {
-                            error(lines[i2]);
+                            context.error("line " + i2 + ": " + e);
                         }
                     }
 
