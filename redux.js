@@ -210,12 +210,8 @@ function inject(context) {
                     case '=':
                         if (inIfStatement === true)
                             result += (rjss[i - 1] != '!' && rjss[i - 1] != '<' && rjss[i - 1] != '>') ? '==' : '=';
-                        else if (inVariable) {
+                        else 
                             result += currentChar;
-                        }
-                        else {
-                            result += currentChar;
-                        }
                         break;
                     case ']':
                         if (braceDepth > 0) {
