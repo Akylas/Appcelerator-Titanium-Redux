@@ -477,7 +477,7 @@ function inject(context) {
             var type = obj.constructorName || '';
             args.rclass = args.rclass || (obj.rclass || undefined)
             args.id = args.id || (obj.id || undefined)
-            var styles = redux.fn.style(type, args, orientatio, overriden);
+            var styles = redux.fn.style(type, args, orientation, overriden);
             mergeObjects(obj, styles, override);
         },
         /**
