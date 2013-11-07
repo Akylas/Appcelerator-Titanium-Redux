@@ -95,7 +95,7 @@ function inject(context) {
 
     function mergeObjects(target, source, newObjOverridesDefault) {
         var key, val, goDeep;
-        if (target && source.hasOwnProperty) {
+        if (target) {
             for (key in source) {
                 if (!hasOwnProperty(source, key))
                     continue;
@@ -107,7 +107,7 @@ function inject(context) {
                     if (!target[key])
                         target[key] = {};
                     mergeObjects(target[key], val, newObjOverridesDefault);
-                } else if ((typeof target[key] === 'undefined') || (newObjOverridesDefault)) {
+                } else if ((typeof target[key] === 'undefined') || (newObjOverridesDefault === true)) {
                     target[key] = val;
                 }
             }
@@ -160,6 +160,8 @@ function inject(context) {
             if (compiled.exists()) {
                 return compiled.read() + '';
             }
+
+            debug('parseRJSS ' + file);
 
             var rjss = (Ti.Filesystem.getFile(file).read() + '').replace(/[\r\t\n]/g, ' ');
             var result = '', braceDepth = 0;
@@ -332,39 +334,6 @@ function inject(context) {
         clone: function clone(original) {
             return JSON.parse(JSON.stringify(original));
         },
-
-        /**
-         * Merges the properties of the two objects.
-         * @param {Object} defaultObj
-         * @param {Object} newObj
-         * @param {Boolean} newObjOverridesDefault (defaults to false, therefore defaultObj is not overriden where attributes exist)
-         */
-        mergeObjects: function mergeObjects(defaultObj, newObj, newObjOverridesDefault) {
-            var combined = {};
-            if (defaultObj === null) {
-                return newObj || {};
-            }
-            if (newObj === null) {
-                return defaultObj;
-            } else {
-                combined = redux.fn.clone(defaultObj);
-            }
-            for (var index in newObj) {
-                if (newObj.hasOwnProperty(index)) {
-                    if (typeof newObj[index] === 'object') {
-                        // Only combine child object if it's a native Javascript object and not an Array
-                        if ( (newObj[index].hasOwnProperty) && !(newObj[index] instanceof Array) ) {
-                          combined[index] = mergeObjects(combined[index], newObj[index], newObjOverridesDefault);
-                        } else if ( (typeof combined[index] === 'undefined') || (newObjOverridesDefault) ) {
-                          combined[index] = newObj[index];
-                        }
-                    } else if ( (typeof combined[index] === 'undefined') || (newObjOverridesDefault) ) {
-                        combined[index] = newObj[index];
-                    }
-                }
-            }
-            return combined;
-        },
         /**
          * Adds an event binder that can bind listen events or fire events, similar to how jQuery's events stack works.
          * @param {Object} event
@@ -425,7 +394,7 @@ function inject(context) {
          * Takes in an object and applies any default styles necessary to it.
          * @param args
          */
-        style: function(type, args, orientation) {
+        style: function(type, args, orientation, override) {
             args = args || {};
             orientation = redux.fn.parseOrientationString(orientation);
             // merge defaults by id
@@ -434,7 +403,7 @@ function inject(context) {
                 for (var i = rids.length - 1; i >= 0; i--) {
                     var rid = rids[i];
                     if (redux.data.defaults.byID[rid])
-                        args = mergeObjects(args, redux.data.defaults.byID[rid][orientation]);
+                        args = mergeObjects(args, redux.data.defaults.byID[rid][orientation], override);
                 };
             }
             // merge defaults by class name
@@ -443,12 +412,12 @@ function inject(context) {
                 for (var i = classes.length - 1; i >= 0; i--) {
                     var rclass = classes[i];
                     if (redux.data.defaults.byRclass[rclass])
-                        args = mergeObjects(args, redux.data.defaults.byRclass[rclass][orientation]);
+                        args = mergeObjects(args, redux.data.defaults.byRclass[rclass][orientation], override);
                 };
             }
             // merge defaults by type
             if (type && type !== '' && redux.data.defaults.byType[type])
-                return mergeObjects(args, redux.data.defaults.byType[type][orientation]);
+                return mergeObjects(args, redux.data.defaults.byType[type][orientation], override);
             else
                 return args;
         },
@@ -463,7 +432,7 @@ function inject(context) {
         applyStyle: function(obj, type, args, orientation, override) {
             override = override !== false;
             var styles = redux.fn.style(type, args, orientation, override);
-            mergeObjects(obj, styles, override);
+            mergeObjects(obj, styles, override, override);
         },
         /**
          * Applies the styles from the passed in arguments directly to the passed in
@@ -478,7 +447,7 @@ function inject(context) {
             args.rclass = args.rclass || (obj.rclass || undefined)
             args.id = args.id || (obj.id || undefined)
             var styles = redux.fn.style(type, args, orientation, override);
-            mergeObjects(obj, styles, override);
+            mergeObjects(obj, styles, override, override);
         },
         /**
          * Adds a natural constructors for all the different things you can create with Ti, like Labels,
